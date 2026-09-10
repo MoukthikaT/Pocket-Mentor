@@ -1,0 +1,71 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          teal: '#218DAE',
+          cyan: '#2BBBD7',
+          cream: '#FCE59A',
+          yellow: '#FFD758',
+          dark: '#0F172A',
+          slate: '#1E293B',
+          muted: '#64748B',
+        },
+        primary: {
+          50: '#F0F9FC',
+          100: '#E0F3F9',
+          200: '#BAE6F3',
+          300: '#7CD2E7',
+          400: '#2BBBD7',
+          500: '#218DAE',
+          600: '#1B7692',
+          700: '#165F76',
+          800: '#134D60',
+          900: '#0E3A49',
+          950: '#082530',
+        },
+        cyan: {
+          50: '#ECFAFD',
+          100: '#D5F4FA',
+          200: '#AEE9F5',
+          300: '#6ED7EB',
+          400: '#2BBBD7',
+          500: '#1AA1BD',
+          600: '#14819A',
+          700: '#13677C',
+          800: '#165464',
+          900: '#164654',
+        },
+        cream: {
+          50: '#FFFDF5',
+          100: '#FEF8E3',
+          200: '#FCE59A',
+          300: '#FAD968',
+          400: '#F7C93C',
+        },
+        gold: {
+          300: '#FFE68F',
+          400: '#FFE073',
+          500: '#FFD758',
+          600: '#E5B82E',
+          700: '#B88B16',
+        },
+      },
+      fontFamily: {
+        display: ['Outfit', 'sans-serif'],
+        body: ['Plus Jakarta Sans', 'sans-serif'],
+        game: ['Sora', 'sans-serif'],
+      },
+      boxShadow: {
+        soft: '0 10px 30px -5px rgba(33, 141, 174, 0.08), 0 4px 12px -2px rgba(33, 141, 174, 0.04)',
+        glow: '0 0 25px rgba(43, 187, 215, 0.35)',
+        gold: '0 8px 25px -4px rgba(255, 215, 88, 0.4)',
+        card: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03)',
+        'card-hover': '0 20px 40px -15px rgba(33, 141, 174, 0.15), 0 8px 16px -6px rgba(15, 23, 42, 0.05)',
+      },
+    },
+  },
+  plugins: [],
+};
