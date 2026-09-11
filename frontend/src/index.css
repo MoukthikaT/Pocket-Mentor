@@ -141,3 +141,12 @@ h1, h2, h3, .font-display-heading {
   background: #218DAE;
 }
 
+
+/* Fix input icons overlapping with text */
+.input-field.pl-10 {
+  padding-left: 2.5rem !important;
+}
+
+.input-field.pr-10 {
+  padding-right: 2.5rem !important;
+}

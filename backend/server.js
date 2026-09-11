@@ -15,14 +15,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5041;
 
-const corsOrigin = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
-  : /^http:\/\/localhost:\d+$/;
+// Allowed frontend origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://pocket-mentor-frontend.onrender.com',
+];
 
 app.use(cors({
-  origin: corsOrigin,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
@@ -47,7 +56,9 @@ app.use(errorHandler);
 if (process.env.MONGODB_URI) {
   connectDB();
 } else {
-  console.log('MongoDB URI not configured; running in in-memory demo mode.');
+  console.log(
+    'MongoDB URI not configured; running in in-memory demo mode.'
+  );
 }
 
 const server = app.listen(PORT, () => {
@@ -56,7 +67,9 @@ const server = app.listen(PORT, () => {
 
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Pocket Mentor may already be running; stop the existing server before starting another one.`);
+    console.error(
+      `Port ${PORT} is already in use. Pocket Mentor may already be running; stop the existing server before starting another one.`
+    );
     process.exit(1);
   }
 
