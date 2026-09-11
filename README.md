@@ -45,5 +45,5 @@ Pocket Mentor is an AI-powered personalized revision assistant designed for stud
 ## Screenshots
 
 <img width="638" height="314" alt="image" src="https://github.com/user-attachments/assets/d2a5852a-6526-41ae-a459-292237056422" />
-<img width="1273" height="624" alt="image" src="https://github.com/user-attachments/assets/1b153e24-0a64-4fac-8c09-b997aea40da6" />
+<img width="638" height="314" alt="image" src="https://github.com/user-attachments/assets/1b153e24-0a64-4fac-8c09-b997aea40da6" />
 
