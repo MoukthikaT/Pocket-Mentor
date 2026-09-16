@@ -7,3 +7,4 @@ export const submitBossAnswer = (payload) => api.post('/learning/boss', payload)
 export const startRescue = (payload) => api.post('/learning/rescue', payload).then(({ data }) => data);
 export const saveQuizRecord = (payload) => api.post('/learning/quiz', payload).then(({ data }) => data);
 export const fixMistake = (payload) => api.post('/learning/mistakes/fix', payload).then(({ data }) => data);
+export const explainConcept = (payload) => api.post('/ai/explain', payload).then(({ data }) => data);

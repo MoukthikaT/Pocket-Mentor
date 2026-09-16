@@ -23,6 +23,7 @@ import {
   Compass
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeToggle } from '../context/ThemeContext';
 
 export default function AppShell({ children }) {
   const { user, logout } = useAuth();
@@ -96,7 +97,7 @@ export default function AppShell({ children }) {
             <div className="brand-mark">P</div>
             {!collapsed && (
               <div className="min-w-0">
-                <span className="block font-display font-extrabold text-white text-base tracking-tight leading-tight">
+                <span className="font-logo block text-white text-base leading-tight">
                   POCKET MENTOR
                 </span>
                 <span className="block text-[10px] font-semibold text-[#2BBBD7] tracking-widest uppercase">
@@ -105,6 +106,8 @@ export default function AppShell({ children }) {
               </div>
             )}
           </div>
+
+          <ThemeToggle compact />
 
           {/* Desktop Collapse Toggle */}
           <button

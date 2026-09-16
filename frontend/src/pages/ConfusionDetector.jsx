@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import PageHeader, { EmptyState } from '../components/ui/PageHeader';
@@ -6,32 +6,17 @@ import Card, { CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { Brain, HelpCircle, CheckCircle2, Sparkles, ArrowRight, Lightbulb } from 'lucide-react';
+import { getLearningOverview } from '../services/learningApi';
 
 export default function ConfusionDetector() {
   const navigate = useNavigate();
+  const [confusions, setConfusions] = useState([]);
 
-  const confusions = [
-    {
-      id: 'c1',
-      topic: 'Operating Systems',
-      concept: 'Process vs Thread',
-      whatYouThought: 'Processes share memory address space directly like threads.',
-      whatIsCorrect: 'Processes have separate address spaces; threads within the same process share memory space.',
-      simpleExplanation: 'Think of a process as a separate house (isolated), and threads as people living inside the same house sharing rooms.',
-      example: 'Chrome tabs running in separate processes vs multiple download threads inside one process.',
-      quickCheck: 'If one thread crashes, does the whole process crash? (Yes, usually, because memory is shared).',
-    },
-    {
-      id: 'c2',
-      topic: 'Computer Networks',
-      concept: 'TCP vs UDP',
-      whatYouThought: 'UDP guarantees packet delivery order just like TCP.',
-      whatIsCorrect: 'UDP is connectionless and does not guarantee delivery or packet ordering; TCP is connection-oriented.',
-      simpleExplanation: 'TCP is like a phone call (handshake, confirmed reception), UDP is like sending a postcard (send and hope it gets there).',
-      example: 'Video streaming and online games use UDP for speed; file downloads use TCP for accuracy.',
-      quickCheck: 'Which protocol is preferred for real-time multiplayer gaming? (UDP).',
-    },
-  ];
+  useEffect(() => {
+    getLearningOverview()
+      .then((data) => setConfusions((data.mistakes || []).map((item) => ({ ...item.data, id: item._id, topic: item.topic }))))
+      .catch(() => setConfusions([]));
+  }, []);
 
   return (
     <AppShell>
@@ -42,7 +27,7 @@ export default function ConfusionDetector() {
           description="When you repeatedly struggle with a concept, Pocket Mentor breaks down your misconception with supportive explanations."
         />
 
-        <div className="space-y-6 max-w-4xl">
+        {confusions.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No confusion signals recorded yet. Complete a quiz or learning activity to identify one.</div> : <div className="space-y-6 max-w-4xl">
           {confusions.map((item) => (
             <Card key={item.id} hoverEffect={false} className="p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -90,7 +75,7 @@ export default function ConfusionDetector() {
               </div>
             </Card>
           ))}
-        </div>
+        </div>}
       </div>
     </AppShell>
   );

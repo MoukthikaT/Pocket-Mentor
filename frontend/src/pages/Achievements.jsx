@@ -8,77 +8,11 @@ import { Trophy, Award, Sparkles, Lock, Flame, Swords, Users, Target, BookOpen, 
 export default function Achievements() {
   const [filter, setFilter] = useState('ALL');
 
-  const allAchievements = [
-    {
-      id: 'a1',
-      title: 'First Topic Mastered',
-      description: 'Complete your very first revision pack and quiz with >80% score.',
-      category: 'Revision',
-      status: 'unlocked',
-      icon: BookOpen,
-      xp: '+50 XP',
-      date: 'Unlocked 3 days ago',
-    },
-    {
-      id: 'a2',
-      title: '7-Day Streak Master',
-      description: 'Revise every single day for 7 consecutive days.',
-      category: 'Consistency',
-      status: 'unlocked',
-      icon: Flame,
-      xp: '+150 XP',
-      date: 'Unlocked yesterday',
-    },
-    {
-      id: 'a3',
-      title: 'First Boss Defeated',
-      description: 'Clear all 5 levels of a topic boss in the Boss Battle Arena.',
-      category: 'Battle',
-      status: 'unlocked',
-      icon: Swords,
-      xp: '+200 XP',
-      date: 'Unlocked today',
-    },
-    {
-      id: 'a4',
-      title: 'Teach Like A Pro',
-      description: 'Achieve a 90%+ teaching clarity score when explaining to Anu.',
-      category: 'Feynman',
-      status: 'in_progress',
-      icon: Users,
-      xp: '+100 XP',
-      progress: 75,
-    },
-    {
-      id: 'a5',
-      title: 'Mistake Crusher',
-      description: 'Successfully resolve 10 misconceptions in the Mistake Graveyard.',
-      category: 'Mastery',
-      status: 'in_progress',
-      icon: Target,
-      progress: 40,
-    },
-    {
-      id: 'a6',
-      title: 'Rescue Survivor',
-      description: 'Complete a 5-Minute Rescue session before an exam.',
-      category: 'Rescue',
-      status: 'unlocked',
-      icon: Zap,
-      xp: '+75 XP',
-      date: 'Unlocked 2 days ago',
-    },
-    {
-      id: 'a7',
-      title: 'Quiz Master General',
-      description: 'Scored 100% on 5 different subject quizzes.',
-      category: 'Quiz',
-      status: 'locked',
-      icon: Trophy,
-      xp: '+300 XP',
-    },
-  ];
-
+  const allAchievements = [];
+  /*
+   * Achievement definitions must be connected to persisted user records.
+   * No badge is shown until the corresponding activity exists.
+   */
   const filtered = allAchievements.filter((item) => {
     if (filter === 'UNLOCKED') return item.status === 'unlocked';
     if (filter === 'IN_PROGRESS') return item.status === 'in_progress';
@@ -113,7 +47,7 @@ export default function Achievements() {
         </div>
 
         {/* Badges Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><h2 className="text-xl font-bold text-slate-900">No achievements yet</h2><p className="mt-2 text-sm text-slate-500">Complete your first learning activity to start earning badges.</p></div> : <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((item) => {
             const isUnlocked = item.status === 'unlocked';
             const isInProgress = item.status === 'in_progress';
@@ -164,7 +98,7 @@ export default function Achievements() {
               </Card>
             );
           })}
-        </div>
+        </div>}
       </div>
     </AppShell>
   );

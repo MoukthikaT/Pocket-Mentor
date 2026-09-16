@@ -2,6 +2,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import { createUser, findUserByEmail, findUserById } from '../utils/demoStore.js';
+import { useMongo } from '../utils/storageMode.js';
 
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
@@ -16,14 +17,14 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error('Passwords do not match.');
   }
 
-  const userExists = process.env.MONGODB_URI ? await User.findOne({ email }) : findUserByEmail(email);
+  const userExists = useMongo() ? await User.findOne({ email }) : findUserByEmail(email);
 
   if (userExists) {
     res.status(400);
     throw new Error('User already exists.');
   }
 
-  const user = process.env.MONGODB_URI ? await User.create({
+  const user = useMongo() ? await User.create({
     name,
     email,
     password,
@@ -46,9 +47,9 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = process.env.MONGODB_URI ? await User.findOne({ email }) : findUserByEmail(email);
+  const user = useMongo() ? await User.findOne({ email }) : findUserByEmail(email);
 
-  const passwordMatches = user && (process.env.MONGODB_URI ? await user.matchPassword(password) : user.password === password);
+  const passwordMatches = user && (useMongo() ? await user.matchPassword(password) : user.password === password);
   if (!passwordMatches) {
     res.status(401);
     throw new Error('Invalid email or password.');
@@ -64,7 +65,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  const user = process.env.MONGODB_URI ? await User.findById(req.user._id).select('-password') : findUserById(req.user._id);
+  const user = useMongo() ? await User.findById(req.user._id).select('-password') : findUserById(req.user._id);
 
   if (!user) {
     res.status(404);

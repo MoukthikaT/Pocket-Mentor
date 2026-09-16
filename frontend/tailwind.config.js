@@ -54,8 +54,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Outfit', 'sans-serif'],
-        body: ['Plus Jakarta Sans', 'sans-serif'],
+        display: ['Bricolage Grotesque', 'sans-serif'],
+        body: ['DM Sans', 'sans-serif'],
         game: ['Sora', 'sans-serif'],
       },
       boxShadow: {

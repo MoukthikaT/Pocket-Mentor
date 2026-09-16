@@ -1,11 +1,15 @@
-const KEY = 'pocketMentorChallenges';
+const KEY_PREFIX = 'pocketMentorChallenges:';
 
-const read = () => {
-  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+const read = (userId) => {
+  if (!userId) return [];
+  try { return JSON.parse(localStorage.getItem(`${KEY_PREFIX}${String(userId)}`) || '[]'); } catch { return []; }
 };
 
-export const saveChallenge = (entry) => localStorage.setItem(KEY, JSON.stringify([entry, ...read()]));
-export const getChallenges = (userId) => read().filter((entry) => !userId || entry.userId === userId);
+export const saveChallenge = (entry) => {
+  if (!entry?.userId) return;
+  localStorage.setItem(`${KEY_PREFIX}${String(entry.userId)}`, JSON.stringify([entry, ...read(entry.userId)]));
+};
+export const getChallenges = (userId) => read(userId).filter((entry) => entry.userId === userId);
 export const getChallengeStats = (userId) => {
   const entries = getChallenges(userId);
   const caught = entries.filter((entry) => entry.correct).length;
@@ -13,11 +17,13 @@ export const getChallengeStats = (userId) => {
   return { entries, caught, score, level: Math.max(1, Math.min(5, Math.floor(caught / 3) + 1)) };
 };
 
-export const buildChallenge = (topic = 'this topic', level = 1) => ({
-  claim: `A reliable way to master ${topic} is to memorize isolated answers without checking the reasoning behind them.`,
-  verdict: 'false',
-  correction: `Understanding the reasoning, checking examples, and practising retrieval are more reliable ways to master ${topic}.`,
-  explanation: `The claim sounds efficient, but memorising answers alone makes it difficult to apply knowledge to unfamiliar questions.`,
+export const buildChallenge = (pack, level = 1) => ({
+  claim: pack?.material?.quiz?.[0]
+    ? `According to your study material, the correct answer to "${pack.material.quiz[0].question}" is "${pack.material.quiz[0].options[pack.material.quiz[0].correctAnswer]}".`
+    : '',
+  verdict: pack?.material?.quiz?.[0] ? 'true' : '',
+  correction: pack?.material?.quiz?.[0]?.explanation || '',
+  explanation: pack?.material?.quiz?.[0]?.explanation || '',
   level,
-  topic,
+  topic: pack?.topic || '',
 });

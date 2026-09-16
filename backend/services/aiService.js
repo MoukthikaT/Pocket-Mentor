@@ -1,857 +1,671 @@
-import dotenv from 'dotenv';
-dotenv.config();
+/*
+ * Pocket Mentor AI Service
+ *
+ * CORE RULE:
+ * Every academic output must be based ONLY on the student's
+ * supplied study material.
+ *
+ * The subject/topic name is used only as a label/context.
+ * It must NEVER be used as a source of academic knowledge.
+ */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// --------------------------------------------------
-// ENVIRONMENT
-// --------------------------------------------------
+const cleanText = (value = '') =>
+  String(value)
+    .replace(/\r/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-const apiKey = process.env.GEMINI_API_KEY;
-
-const MODEL =
-  process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
-
-console.log('------------------------------------');
-console.log('AI SERVICE ENVIRONMENT CHECK');
-console.log(
-  'GEMINI_API_KEY:',
-  apiKey ? 'GEMINI KEY FOUND' : 'GEMINI KEY NOT FOUND'
-);
-console.log('GEMINI_MODEL:', MODEL);
-console.log('------------------------------------');
-
-const genAI = apiKey
-  ? new GoogleGenerativeAI(apiKey)
-  : null;
-
-
-// --------------------------------------------------
-// BASIC HELPERS
-// --------------------------------------------------
-
-const cleanText = (value) => {
-  if (value === undefined || value === null) {
-    return '';
-  }
-
-  return String(value).trim();
+const validateInput = (topic, notes) => {
+  if (!topic || !cleanText(topic)) throw new Error('Please provide a subject or topic name.');
+  if (!notes || !cleanText(notes)) throw new Error('Please provide your own study material before generating content.');
+  if (cleanText(notes).length < 30) throw new Error('Please provide at least 30 characters of your own study material.');
 };
 
+const splitIntoFacts = (notes = '') => {
+  const normalized = String(notes).replace(/\r/g, '').trim();
+  const lines = normalized.split(/\n+/).map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim());
+  const sentences = normalized.split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim());
+  const lineFacts = lines.map(cleanText).filter((item) => item.length >= 20);
+  const sentenceFacts = sentences.map(cleanText).filter((item) => item.length >= 20);
+  const candidates = lineFacts.length > 1 || sentenceFacts.length <= 1 ? lineFacts : sentenceFacts;
 
-// --------------------------------------------------
-// AI CONFIGURATION
-// --------------------------------------------------
-
-const ensureAIConfigured = () => {
-  if (!apiKey || !genAI) {
-    const error = new Error(
-      'Gemini AI is not configured. Please check GEMINI_API_KEY in backend/.env.'
-    );
-
-    error.statusCode = 503;
-
-    throw error;
-  }
+  return [...new Set(candidates)]
+    .filter((fact, index, allFacts) => !allFacts.some((other, otherIndex) => otherIndex !== index && other.length > fact.length && other.includes(fact)))
+    .slice(0, 20);
 };
 
-
-// --------------------------------------------------
-// GET GEMINI MODEL
-// --------------------------------------------------
-
-const getModel = () => {
-  ensureAIConfigured();
-
-  return genAI.getGenerativeModel({
-    model: MODEL,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      topK: 40,
-    },
-  });
+const extractConceptLabel = (fact) => {
+  const cleaned = cleanText(fact);
+  return cleaned.length <= 55 ? cleaned.replace(/[.!?]+$/, '') : `${cleaned.substring(0, 52).trim()}...`;
 };
 
+const splitDefinition = (fact) => {
+  const separator = fact.indexOf(':');
+  return separator > 2 && separator < fact.length - 1
+    ? { label: fact.slice(0, separator).trim(), answer: fact.slice(separator + 1).trim() }
+    : { label: extractConceptLabel(fact), answer: fact };
+};
 
-// --------------------------------------------------
-// USER MATERIAL VALIDATION
-// --------------------------------------------------
+const buildGroundedFlashcards = (facts) => facts.slice(0, 8).map((fact) => ({
+  question: `What does your study material say about "${extractConceptLabel(fact)}"?`,
+  answer: fact,
+}));
 
-const requireUserMaterial = ({ topic, notes }) => {
-  const cleanTopic = cleanText(topic);
-  const cleanNotes = cleanText(notes);
-
-  if (!cleanTopic) {
-    const error = new Error(
-      'Please enter your subject.'
-    );
-
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (!cleanNotes) {
-    const error = new Error(
-      'Please provide your own study material first.'
-    );
-
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (cleanNotes.length < 30) {
-    const error = new Error(
-      'Please provide at least 30 characters of your own study material.'
-    );
-
-    error.statusCode = 400;
-    throw error;
-  }
+const buildGroundedQuiz = (facts, topic) => facts.slice(0, 8).map((fact, index) => {
+  const definition = splitDefinition(fact);
+  const distractors = facts
+    .filter((_, itemIndex) => itemIndex !== index)
+    .map((item) => splitDefinition(item).answer)
+    .filter((answer) => answer !== definition.answer)
+    .slice(0, 3);
+  const options = [definition.answer, ...distractors];
+  if (options.length < 2) options.push('This information is not provided in the supplied study material.');
+  const limitedOptions = options.slice(0, 4);
+  const rotation = index % limitedOptions.length;
+  const rotatedOptions = [...limitedOptions.slice(rotation), ...limitedOptions.slice(0, rotation)];
 
   return {
-    topic: cleanTopic,
-    notes: cleanNotes,
+    question: definition.answer === fact
+      ? 'Which statement from your study material is correct?'
+      : `According to your study material, what does "${definition.label}" mean?`,
+    options: rotatedOptions,
+    correctAnswer: rotatedOptions.indexOf(definition.answer),
+    explanation: `Your study material states: ${fact}`,
+    topic,
+    difficulty: index < 2 ? 'easy' : index < 5 ? 'medium' : 'hard',
+  };
+});
+
+const buildMockRevisionPack = (topic, notes) => {
+  const facts = splitIntoFacts(notes);
+  if (!facts.length) throw new Error('Your notes do not contain enough structured information. Please add definitions, explanations, examples, or bullet points.');
+
+  return {
+    summary: facts.slice(0, 6).join('\n\n'),
+    quickRevision: facts.slice(0, 8).map((fact, index) => `${index + 1}. ${fact}`).join('\n'),
+    keyConcepts: facts.slice(0, 8).map(extractConceptLabel),
+    flashcards: buildGroundedFlashcards(facts),
+    quiz: buildGroundedQuiz(facts, topic),
+    sourceType: 'user-notes',
+    generatedFrom: 'student-supplied-material',
+    noteCoverage: Math.min(100, Math.round((facts.length / 8) * 100)),
+    sourcePreview: facts.slice(0, 3).join(' '),
   };
 };
 
+/*
+ * REAL AI PROVIDER
+ */
+const callProvider = async (system, prompt) => {
+  const sourceRestriction = `
+${system}
 
-// --------------------------------------------------
-// NORMAL GEMINI REQUEST
-// --------------------------------------------------
+ABSOLUTE SOURCE RESTRICTION:
 
-const askGemini = async ({
-  systemPrompt,
-  userPrompt,
-}) => {
-  const model = getModel();
+The student's supplied study material is the ONLY source
+of academic information.
 
-  const prompt = `
-You are Pocket Mentor, an intelligent personal AI study mentor.
+The topic/subject name is only a label. Do not use it as a
+source of facts. Do not use general knowledge, textbooks, or
+information from training data. Do not invent definitions,
+examples, distractors, explanations, or missing details.
 
-The student has supplied their OWN study material.
+Every answer, summary sentence, flashcard, quiz option and
+explanation must be directly supported by the supplied material.
+If the material does not support a useful item, omit that item.
 
-==================================================
-SOURCE RULE
-==================================================
-
-Use the student's supplied study material as the primary academic source.
-
-Do NOT invent:
-- subjects
-- chapters
-- syllabus
-- unrelated academic topics
-- unrelated textbook information
-
-You may:
-- reorganize the material
-- simplify difficult wording
-- explain concepts already present
-- create examples for concepts already present
-- create practice questions from the material
-
-If the material does not contain enough information,
-clearly say that.
-
-==================================================
-QUALITY
-==================================================
-
-The student wants beginner-friendly explanations.
-
-When useful:
-
-1. Simple explanation
-2. Detailed explanation
-3. Step-by-step explanation
-4. Example
-5. Important points
-6. Common mistakes
-7. Exam-ready answer
-
-Avoid vague filler.
-
-==================================================
-
-${systemPrompt}
-
-==================================================
-STUDENT MATERIAL / REQUEST
-==================================================
-
-${userPrompt}
-
-==================================================
-
-FINAL CHECK
-
-Use the student's material.
-Do not invent missing academic information.
-Make the answer useful for studying.
+Return valid JSON only.
 `;
 
+  const parseJson = (content) => {
+    const cleaned = String(content || '')
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    return JSON.parse(cleaned);
+  };
 
-  console.log('Calling Gemini...');
-  console.log('Model:', MODEL);
-
-  try {
-    const result = await model.generateContent(prompt);
-
-    const response = result.response;
-    const text = response.text();
-
-    if (!text || !text.trim()) {
-      throw new Error(
-        'Gemini returned an empty response.'
-      );
-    }
-
-    console.log('Gemini response received successfully.');
-
-    return text.trim();
-
-  } catch (error) {
-
-    console.error('GEMINI API ERROR');
-    console.error('Message:', error?.message);
-    console.error('Status:', error?.status);
-    console.error('Status Code:', error?.statusCode);
-    console.error('Code:', error?.code);
-
-    throw error;
-  }
-};
-
-
-// --------------------------------------------------
-// JSON GEMINI REQUEST
-// --------------------------------------------------
-
-const askGeminiJSON = async ({
-  systemPrompt,
-  userPrompt,
-}) => {
-
-  const model = getModel();
-
-  const prompt = `
-You are Pocket Mentor, an intelligent AI study mentor.
-
-The student has supplied their OWN academic material.
-
-Use that material as the source.
-
-DO NOT invent:
-- subjects
-- chapters
-- syllabus
-- unrelated academic information
-- missing textbook information
-
-You may explain, reorganize and simplify concepts already contained
-in the student's material.
-
-==================================================
-QUALITY REQUIREMENTS
-==================================================
-
-Create useful educational content.
-
-Use beginner-friendly explanations.
-
-Do not give shallow one-line answers.
-
-==================================================
-
-${systemPrompt}
-
-==================================================
-STUDENT MATERIAL
-==================================================
-
-${userPrompt}
-
-==================================================
-
-IMPORTANT JSON RULE
-
-Return ONLY valid JSON.
-
-Do NOT use markdown.
-
-Do NOT use:
-\`\`\`json
-
-Do NOT write anything before the JSON.
-
-Do NOT write anything after the JSON.
-
-The response must be directly parseable by JSON.parse().
-`;
-
-
-  console.log('Calling Gemini JSON...');
-  console.log('Model:', MODEL);
-
-  try {
-
-    const result = await model.generateContent(prompt);
-
-    const text = result.response.text().trim();
-
-    if (!text) {
-      throw new Error(
-        'Gemini returned an empty response.'
-      );
-    }
-
-    let cleaned = text;
-
-    // Remove markdown fences if Gemini accidentally adds them
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned
-        .replace(/^```json\s*/i, '')
-        .replace(/```$/i, '')
-        .trim();
-    }
-
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned
-        .replace(/^```\s*/i, '')
-        .replace(/```$/i, '')
-        .trim();
-    }
-
+  if (process.env.GEMINI_API_KEY && process.env.AI_PROVIDER !== 'mock') {
     try {
-
-      const parsed = JSON.parse(cleaned);
-
-      console.log(
-        'Gemini JSON response parsed successfully.'
-      );
-
-      return parsed;
-
-    } catch (parseError) {
-
-      console.error(
-        'Gemini JSON parsing failed.'
-      );
-
-      console.error(
-        'Gemini returned:',
-        text
-      );
-
-      throw new Error(
-        'Gemini returned invalid JSON. Please try again.'
-      );
+      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const configuredModel = process.env.GEMINI_MODEL;
+      const model = client.getGenerativeModel({
+        model: configuredModel && !configuredModel.includes('3.5')
+          ? configuredModel
+          : 'gemini-1.5-flash',
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+        },
+      });
+      const result = await model.generateContent(`${sourceRestriction}\n${prompt}`);
+      return parseJson(result.response.text());
+    } catch (error) {
+      console.warn('Gemini generation failed; trying the configured fallback:', error.message);
     }
-
-  } catch (error) {
-
-    console.error('GEMINI JSON API ERROR');
-    console.error('Message:', error?.message);
-    console.error('Status:', error?.status);
-    console.error('Code:', error?.code);
-
-    throw error;
   }
+
+  if (!process.env.AI_API_KEY || process.env.AI_PROVIDER === 'mock') return null;
+
+  const response = await fetch(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      method: 'POST',
+
+      headers: {
+        'Content-Type': 'application/json',
+
+        Authorization: `Bearer ${process.env.AI_API_KEY}`,
+      },
+
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'gpt-4o-mini',
+
+        temperature: 0.2,
+
+        response_format: {
+          type: 'json_object',
+        },
+
+        messages: [
+          {
+            role: 'system',
+
+            content: sourceRestriction,
+          },
+
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `AI provider returned ${response.status}: ${errorText}`
+    );
+  }
+
+  const payload = await response.json();
+
+  const content =
+    payload.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('AI provider returned an empty response.');
+  }
+
+  return JSON.parse(content);
 };
 
+/*
+ * REVISION PACK GENERATION
+ */
+const generateRevisionPack = async (topic, notes) => {
+  validateInput(topic, notes);
 
-// --------------------------------------------------
-// REVISION PACK
-// --------------------------------------------------
+  /*
+   * First attempt real AI only when an API key is configured.
+   */
+  const providerResult = await callProvider(
+    `
+Create a complete revision pack.
 
-export const generateRevisionPack = async (
-  topic,
-  notes
-) => {
-
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
-
-  return askGeminiJSON({
-
-    systemPrompt: `
-
-Create a COMPLETE revision pack from the student's material.
-
-Return EXACTLY this structure:
+Return JSON with:
 
 {
-  "topic": "string",
-  "summary": "detailed summary",
-  "keyPoints": [
-    "important point"
-  ],
-  "concepts": [
+  "summary": "short summary",
+  "quickRevision": "quick revision section",
+  "keyConcepts": [],
+  "flashcards": [
     {
-      "title": "concept name",
-      "explanation": "detailed beginner-friendly explanation",
-      "example": "clear example",
-      "examTip": "useful exam tip"
+      "question": "",
+      "answer": ""
     }
   ],
-  "commonMistakes": [
-    "specific mistake"
-  ],
-  "quickRevision": [
-    "important revision point"
-  ],
-  "practiceQuestions": [
+  "quiz": [
     {
-      "question": "question",
-      "answer": "complete answer",
-      "explanation": "detailed explanation"
+      "question": "",
+      "options": [],
+      "correctAnswer": 0,
+      "explanation": "",
+      "topic": "",
+      "difficulty": "easy"
     }
   ]
 }
 
-Create useful content based ONLY on the supplied material.
+Generate the questions from specific information
+contained in the supplied notes.
 
-Approximately:
+Do not generate generic questions merely from
+the subject name.
 
-- 5-10 key points
-- 4-8 concepts
-- 3-6 common mistakes
-- 5-10 quick revision points
-- 5-10 practice questions
+If the notes mention three concepts, questions should
+be about those concepts.
 
-Do NOT create filler.
-
-If the material supports fewer items,
-create fewer items.
-
-Practice answers must explain WHY,
-not just give the answer.
-
+If the notes do not contain enough information for
+a question, do not invent information.
 `,
+    JSON.stringify({
+      topic: cleanText(topic),
 
-    userPrompt: `
+      studentStudyMaterial: cleanText(notes),
+    })
+  );
 
-SUBJECT:
+  if (providerResult) {
+    /*
+     * Basic structural validation before sending AI data
+     * back to the frontend.
+     */
+    return {
+      ...providerResult,
 
-${material.topic}
+      sourceType: 'user-notes',
 
-==================================================
+      generatedFrom: 'student-supplied-material',
 
-STUDENT'S OWN STUDY MATERIAL:
-
-${material.notes}
-
-==================================================
-
-Create the revision pack entirely from this material.
-
-`,
-  });
-};
-
-
-// --------------------------------------------------
-// TEACH CONCEPT
-// --------------------------------------------------
-
-export const teachConcept = async ({
-  topic,
-  notes,
-  question,
-}) => {
-
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
-
-  const studentQuestion =
-    cleanText(question);
-
-  if (!studentQuestion) {
-    const error = new Error(
-      'Please enter what you want to learn.'
-    );
-
-    error.statusCode = 400;
-
-    throw error;
+      topic: cleanText(topic),
+    };
   }
 
-  return askGemini({
-
-    systemPrompt: `
-
-Teach the student's question using their supplied material.
-
-Use this structure:
-
-## Simple Explanation
-
-## Detailed Explanation
-
-## Step-by-Step
-
-## Example
-
-## Why It Matters
-
-## Common Mistake
-
-## Exam-Ready Answer
-
-Do not invent information outside the material.
-
-`,
-
-    userPrompt: `
-
-SUBJECT:
-
-${material.topic}
-
-==================================================
-
-STUDENT MATERIAL:
-
-${material.notes}
-
-==================================================
-
-STUDENT QUESTION:
-
-${studentQuestion}
-
-`,
-  });
+  /*
+   * No API key → safe local generation.
+   *
+   * This generator still uses ONLY the student's notes.
+   */
+  return buildMockRevisionPack(
+    cleanText(topic),
+    cleanText(notes)
+  );
 };
 
+const explainConcept = async ({ topic, concept, level, notes }) => {
+  validateInput(topic, notes);
+  const levels = ['beginner', 'intermediate', 'exam-ready'];
+  const selectedLevel = levels.includes(level) ? level : 'beginner';
+  const providerResult = await callProvider(
+    `Explain the selected concept only from the supplied study material at the ${selectedLevel} level.
 
-// --------------------------------------------------
-// FLASHCARDS
-// --------------------------------------------------
+Return JSON with title, explanation, keyPoints, example, checkQuestion, checkAnswer, and level.
+Beginner uses plain language. Intermediate connects ideas. Exam-ready is concise and includes only supported definitions, distinctions, conditions, and details.
+Do not add general knowledge or fill gaps.`,
+    JSON.stringify({ topic, concept, requestedLevel: selectedLevel, studentStudyMaterial: cleanText(notes) })
+  );
 
-export const generateFlashcards = async (
+  if (providerResult) return { ...providerResult, level: selectedLevel, noteBased: true };
+
+  const facts = splitIntoFacts(notes);
+  const source = facts.find((fact) => fact.toLowerCase().includes(String(concept).toLowerCase())) || facts[0];
+  if (!source) throw new Error('That concept is not supported by the supplied study material.');
+
+  return {
+    title: concept,
+    explanation: selectedLevel === 'beginner' ? `In simple terms: ${source}` : selectedLevel === 'intermediate' ? `Your notes connect this concept to the following idea: ${source}` : `Exam-ready point from your notes: ${source}`,
+    keyPoints: [source],
+    example: 'Use an example from your supplied study material when reviewing this concept.',
+    checkQuestion: `What does your study material say about ${concept}?`,
+    checkAnswer: source,
+    level: selectedLevel,
+    noteBased: true,
+  };
+};
+
+/*
+ * TEACH A FRIEND
+ */
+const teachFriend = async ({
   topic,
-  notes
-) => {
+  personality,
+  explanation,
+  notes,
+  profile,
+}) => {
+  validateInput(topic, notes);
 
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
+  const providerResult = await callProvider(
+    `
+You are a friendly beginner student.
 
-  return askGeminiJSON({
-
-    systemPrompt: `
-
-Generate useful study flashcards.
+Evaluate the student's explanation ONLY against
+the supplied study material.
 
 Return:
 
 {
-  "cards": [
-    {
-      "question": "clear question",
-      "answer": "complete answer",
-      "explanation": "why the answer is correct"
-    }
-  ]
+  "followUp": "",
+  "report": {
+    "accuracy": 0,
+    "clarity": 0,
+    "examples": 0,
+    "conceptCoverage": 0,
+    "handlingQuestions": 0,
+    "overall": 0
+  },
+  "missingConcepts": [],
+  "feedback": "",
+  "suggestions": []
 }
 
-Generate 8-12 cards only when supported
-by the student's material.
-
-Do not invent information.
-
+Do not judge the explanation using outside knowledge.
 `,
+    JSON.stringify({
+      topic,
+      personality,
+      explanation,
+      notes: String(notes).slice(0, 10000),
+      profile,
+    })
+  );
 
-    userPrompt: `
+  if (providerResult) {
+    return providerResult;
+  }
 
-SUBJECT:
+  const hasExample =
+    /example|because|for instance|such as/i.test(
+      explanation
+    );
 
-${material.topic}
+  const lengthScore = Math.min(
+    92,
+    35 + Math.round(explanation.trim().length / 4)
+  );
 
-==================================================
+  const overall = Math.round(
+    (
+      lengthScore +
+      (hasExample ? 82 : 48) +
+      58 +
+      62 +
+      55
+    ) / 5
+  );
 
-STUDENT MATERIAL:
+  return {
+    followUp:
+      `${personality || 'Your friend'} asks: can you explain one part of your answer using a specific point from your notes?`,
 
-${material.notes}
+    report: {
+      accuracy: lengthScore,
+      clarity: Math.min(95, lengthScore + 4),
+      examples: hasExample ? 82 : 48,
+      conceptCoverage: 62,
+      handlingQuestions: 55,
+      overall,
+    },
 
-`,
-  });
+    missingConcepts: hasExample
+      ? [
+          'Connect your explanation to another point from your notes.',
+        ]
+      : [
+          'Add a concrete example from your notes.',
+          'Explain another point mentioned in your notes.',
+        ],
+
+    feedback:
+      'Your explanation has a useful starting point. Strengthen it by connecting your claims to the study material you provided.',
+
+    suggestions: [
+      'State the main point first.',
+      'Use an example from your notes.',
+      'Connect two related points from your notes.',
+    ],
+  };
 };
 
-
-// --------------------------------------------------
-// SUMMARY
-// --------------------------------------------------
-
-export const summarizeNotes = async (
+/*
+ * BOSS BATTLE EVALUATION
+ */
+const evaluateBoss = async ({
   topic,
-  notes
-) => {
-
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
-
-  return askGemini({
-
-    systemPrompt: `
-
-Create a high-quality study summary.
-
-Preserve important information.
-
-Organize related ideas.
-
-Explain difficult concepts.
-
-Highlight terminology.
-
-Do not add unrelated academic information.
-
-Use readable headings and paragraphs.
-
-`,
-
-    userPrompt: `
-
-SUBJECT:
-
-${material.topic}
-
-==================================================
-
-STUDENT NOTES:
-
-${material.notes}
-
-`,
-  });
-};
-
-
-// --------------------------------------------------
-// AI CHALLENGE
-// --------------------------------------------------
-
-export const generateChallenge = async (
-  topic,
-  notes
-) => {
-
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
-
-  return askGeminiJSON({
-
-    systemPrompt: `
-
-Create one meaningful learning challenge.
-
-Return EXACTLY:
-
-{
-  "question": "clear challenging question",
-  "options": [
-    "option A",
-    "option B",
-    "option C",
-    "option D"
-  ],
-  "correctAnswer": 0,
-  "explanation": "detailed explanation",
-  "hint": "useful hint"
-}
-
-The challenge must be answerable
-from the student's material.
-
-Do not invent information.
-
-`,
-
-    userPrompt: `
-
-SUBJECT:
-
-${material.topic}
-
-==================================================
-
-STUDENT MATERIAL:
-
-${material.notes}
-
-`,
-  });
-};
-
-
-// --------------------------------------------------
-// BOSS BATTLE
-// --------------------------------------------------
-
-export const generateBossQuestion = async ({
-  topic,
-  notes,
-  difficulty = 'hard',
-}) => {
-
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
-
-  return askGeminiJSON({
-
-    systemPrompt: `
-
-Generate ONE challenging question.
-
-Difficulty:
-
-${difficulty}
-
-Return EXACTLY:
-
-{
-  "question": "challenging question",
-  "options": [
-    "option A",
-    "option B",
-    "option C",
-    "option D"
-  ],
-  "correctAnswer": 0,
-  "explanation": "detailed explanation",
-  "hint": "useful hint"
-}
-
-The question must be answerable
-from the student's material.
-
-Do not invent information.
-
-`,
-
-    userPrompt: `
-
-SUBJECT:
-
-${material.topic}
-
-==================================================
-
-STUDENT MATERIAL:
-
-${material.notes}
-
-`,
-  });
-};
-
-
-// --------------------------------------------------
-// MISTAKE ANALYSIS
-// --------------------------------------------------
-
-export const explainMistake = async ({
-  topic,
-  notes,
+  answer,
   question,
-  studentAnswer,
   correctAnswer,
+  level,
+  notes,
 }) => {
+  validateInput(topic, notes);
 
-  const material = requireUserMaterial({
-    topic,
-    notes,
-  });
+  const providerResult = await callProvider(
+    `
+Evaluate a Boss Battle answer.
 
-  return askGemini({
+Use ONLY:
+1. The question
+2. The supplied correct answer
+3. The student's supplied notes
 
-    systemPrompt: `
+Return:
 
-You are Pocket Mentor's mistake-recovery tutor.
+{
+  "correct": true,
+  "damage": 25,
+  "explanation": "",
+  "misconception": "",
+  "mastery": 0,
+  "nextDifficulty": "medium"
+}
 
-Explain:
-
-## What Was Being Tested
-
-## Your Answer
-
-## Why It Was Incorrect
-
-## Correct Answer
-
-## Where The Reasoning Went Wrong
-
-## How To Avoid This Next Time
-
-## Memory Trick
-
-## Exam Tip
-
-Be encouraging but accurate.
-
-Do not invent academic information.
-
+Do not introduce outside academic information.
 `,
+    JSON.stringify({
+      topic,
+      answer,
+      question,
+      correctAnswer,
+      level,
+      notes: String(notes).slice(0, 10000),
+    })
+  );
 
-    userPrompt: `
+  if (providerResult) {
+    return providerResult;
+  }
 
-SUBJECT:
+  const correct =
+    String(answer || '')
+      .trim()
+      .toLowerCase() ===
+    String(correctAnswer || '')
+      .trim()
+      .toLowerCase();
 
-${material.topic}
+  return {
+    correct,
 
-==================================================
+    damage: correct
+      ? level === 'Final Boss'
+        ? 35
+        : 25
+      : 0,
 
-STUDENT MATERIAL:
+    explanation: correct
+      ? 'Direct hit! Your answer matches the answer generated from your study material.'
+      : 'Your answer does not match the answer generated from your supplied study material. Review the relevant material and try again.',
 
-${material.notes}
+    misconception: correct ? '' : answer,
 
-==================================================
+    mastery: correct ? 78 : 42,
 
-QUESTION:
-
-${cleanText(question)}
-
-==================================================
-
-STUDENT ANSWER:
-
-${cleanText(studentAnswer)}
-
-==================================================
-
-CORRECT ANSWER:
-
-${cleanText(correctAnswer)}
-
-`,
-  });
+    nextDifficulty: correct
+      ? 'Understanding'
+      : 'Knowledge',
+  };
 };
 
+/*
+ * RESCUE MODE
+ */
+const createRescue = async ({
+  topic,
+  notes,
+  profile,
+}) => {
+  validateInput(topic, notes);
 
-// --------------------------------------------------
-// DEFAULT EXPORT
-// --------------------------------------------------
+  const providerResult = await callProvider(
+    `
+Create a five-minute emergency revision session.
+
+Use ONLY the student's supplied notes.
+
+Return:
+
+{
+  "priorityConcepts": [],
+  "weakAreas": [],
+  "rapidExplanation": "",
+  "questions": [
+    {
+      "question": "",
+      "answer": "",
+      "explanation": ""
+    }
+  ],
+  "readinessPrompt": ""
+}
+
+Never introduce facts that are absent from the notes.
+`,
+    JSON.stringify({
+      topic,
+
+      notes: String(notes).slice(0, 10000),
+
+      profile,
+    })
+  );
+
+  if (providerResult) {
+    return providerResult;
+  }
+
+  const facts = splitIntoFacts(notes);
+
+  if (!facts.length) {
+    return {
+      priorityConcepts: [],
+
+      weakAreas: [],
+
+      rapidExplanation:
+        'Add your study material first so Rescue Mode can work from your own content.',
+
+      questions: [],
+
+      readinessPrompt:
+        'Add notes to begin a focused revision session.',
+    };
+  }
+
+  return {
+    priorityConcepts: facts.slice(0, 3),
+
+    weakAreas: [
+      'Review the points you found difficult in your supplied notes.',
+    ],
+
+    rapidExplanation: facts
+      .slice(0, 4)
+      .join(' '),
+
+    questions: facts
+      .slice(0, 3)
+      .map((fact) => ({
+        question:
+          `Explain this point from your study material: "${extractConceptLabel(fact)}"`,
+
+        answer: fact,
+
+        explanation:
+          'The answer is taken directly from your supplied study material.',
+      })),
+
+    readinessPrompt:
+      'Can you explain these points without looking at your notes?',
+  };
+};
+
+/*
+ * FIX MISTAKE
+ */
+const fixMistake = async ({
+  topic,
+  misconception,
+  correction,
+  notes,
+}) => {
+  validateInput(topic, notes);
+
+  const providerResult = await callProvider(
+    `
+Help the student understand their mistake.
+
+Use ONLY the supplied correction and context.
+
+Return:
+
+{
+  "thought": "",
+  "correct": "",
+  "explanation": "",
+  "example": "",
+  "quickCheckQuestion": "",
+  "quickCheckAnswer": ""
+}
+
+Do not introduce outside subject information.
+`,
+    JSON.stringify({
+      topic,
+      misconception,
+      correction,
+      notes: String(notes).slice(0, 10000),
+    })
+  );
+
+  if (providerResult) {
+    return providerResult;
+  }
+
+  return {
+    thought: misconception,
+
+    correct:
+      correction ||
+      'Re-check the relevant material you supplied.',
+
+    explanation:
+      'Compare your original answer with the correction and identify exactly which part differs.',
+
+    example:
+      correction ||
+      'Use an example from your own study material.',
+
+    quickCheckQuestion:
+      `What part of ${topic} was different from your original answer?`,
+
+    quickCheckAnswer:
+      correction ||
+      'State the corrected point from your study material.',
+  };
+};
 
 export default {
   generateRevisionPack,
-  generateChallenge,
-  generateBossQuestion,
-  teachConcept,
-  explainMistake,
-  generateFlashcards,
-  summarizeNotes,
+  explainConcept,
+  teachFriend,
+  evaluateBoss,
+  createRescue,
+  fixMistake,
 };

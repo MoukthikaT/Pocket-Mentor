@@ -42,34 +42,7 @@ export default function Graveyard() {
       date: new Date(item.createdAt || Date.now()).toLocaleDateString(),
     }));
 
-    const combined = [...fromChallenges, ...fromOverview];
-    if (combined.length > 0) return combined;
-
-    // Default sample mistakes if empty so UI looks rich
-    return [
-      {
-        id: 'm1',
-        topic: 'Operating Systems',
-        question: 'Which condition is NOT required for a deadlock?',
-        studentAnswer: 'Preemption Allowed',
-        correctAnswer: 'Preemption Disallowed',
-        misconception: 'Thought preemption allowed causes deadlock',
-        severity: 'high',
-        source: 'Boss Battle',
-        date: 'Today',
-      },
-      {
-        id: 'm2',
-        topic: 'Computer Networks',
-        question: 'What is the purpose of the SYN-ACK packet in TCP?',
-        studentAnswer: 'To terminate the connection',
-        correctAnswer: 'To acknowledge SYN and initiate handshake',
-        misconception: 'Confused connection termination (FIN) with handshake',
-        severity: 'medium',
-        source: 'Teach Anu',
-        date: 'Yesterday',
-      },
-    ];
+    return [...fromChallenges, ...fromOverview];
   }, [overview, user]);
 
   const openFix = async (mistake) => {
@@ -80,6 +53,7 @@ export default function Graveyard() {
         topic: mistake.topic,
         misconception: mistake.misconception || mistake.claim,
         correction: mistake.correction,
+        notes: mistake.sourceNote,
       });
       setFix(data);
     } catch (err) {

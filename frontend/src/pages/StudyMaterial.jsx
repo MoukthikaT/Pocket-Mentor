@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, BrainCircuit, Layers3, ListChecks, Sparkles } from 'lucide-react';
 import { getStudyPack } from '../services/studyStore';
+import { useAuth } from '../hooks/useAuth';
+import { explainConcept } from '../services/learningApi';
 
 const resources = [
   { label: 'Summary', icon: ListChecks, action: 'summary' },
@@ -14,9 +17,32 @@ export default function StudyMaterial() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { packId } = useParams();
-  const pack = state?.pack || (packId ? getStudyPack(packId) : null);
+  const { user } = useAuth();
+  const pack = state?.pack?.ownerId === user?._id
+    ? state.pack
+    : (packId ? getStudyPack(packId, user?._id) : null);
   const material = pack?.material || state?.material;
   const weakTopics = state?.weakTopics || [];
+  const [explainLevel, setExplainLevel] = useState('beginner');
+  const [selectedConcept, setSelectedConcept] = useState('');
+  const [explanation, setExplanation] = useState(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainError, setExplainError] = useState('');
+
+  const requestExplanation = async (level, concept = selectedConcept) => {
+    if (!concept || !pack?.sourceNotes) return;
+    setExplainLevel(level);
+    setExplainLoading(true);
+    setExplainError('');
+    try {
+      const result = await explainConcept({ topic: pack.topic, concept, level, notes: pack.sourceNotes });
+      setExplanation(result);
+    } catch (error) {
+      setExplainError(error.response?.data?.message || 'This concept could not be explained from the supplied notes.');
+    } finally {
+      setExplainLoading(false);
+    }
+  };
 
   const handleResourceClick = (action) => {
     if (action === 'flashcards') return navigate('/flashcards', { state: { pack, material } });
@@ -81,6 +107,29 @@ export default function StudyMaterial() {
           </div>
 
           <div className="space-y-6">
+            <div className="card-surface border border-cyan-200 bg-cyan-50/50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Explain It to Me</p>
+              <h2 className="mt-2 text-xl font-bold text-slate-900">Choose a concept from this pack</h2>
+              <p className="mt-1 text-sm text-slate-600">Explanations use only the notes that created this revision pack.</p>
+              <select className="input-field mt-4" value={selectedConcept} onChange={(event) => { setSelectedConcept(event.target.value); setExplanation(null); }}>
+                <option value="">Select a concept</option>
+                {(material.keyConcepts || []).map((concept) => <option key={concept} value={concept}>{concept}</option>)}
+              </select>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {[['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['exam-ready', 'Exam-ready']].map(([level, label]) => (
+                  <button key={level} type="button" disabled={!selectedConcept || explainLoading} onClick={() => requestExplanation(level)} className={`rounded-xl px-3 py-2 text-xs font-bold transition ${explainLevel === level ? 'bg-cyan-700 text-white' : 'bg-white text-slate-700 hover:bg-cyan-100'}`}>{label}</button>
+                ))}
+              </div>
+              {explainLoading && <p className="mt-4 text-sm text-cyan-700">Building this explanation from your notes...</p>}
+              {explainError && <p className="mt-4 text-sm text-rose-600">{explainError}</p>}
+              {explanation && !explainLoading && <div className="mt-4 space-y-3 rounded-xl bg-white p-4 text-sm text-slate-700">
+                <h3 className="font-bold text-slate-900">{explanation.title || selectedConcept}</h3>
+                <p>{explanation.explanation}</p>
+                {explanation.keyPoints?.length > 0 && <ul className="list-disc space-y-1 pl-5">{explanation.keyPoints.map((point, index) => <li key={index}>{point}</li>)}</ul>}
+                {explanation.example && <p><strong>Example from your material:</strong> {explanation.example}</p>}
+                {explanation.checkQuestion && <div className="rounded-lg bg-slate-50 p-3"><strong>Quick check:</strong> {explanation.checkQuestion}<br /><span className="text-slate-500">Answer: {explanation.checkAnswer}</span></div>}
+              </div>}
+            </div>
             <div className="card-surface p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Generated resources</p>
               <div className="mt-4 space-y-3">

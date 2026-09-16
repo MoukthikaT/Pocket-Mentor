@@ -21,15 +21,15 @@ export default function ExamReadiness() {
       .finally(() => setLoading(false));
   }, []);
 
-  const readiness = overview?.readiness || 78;
-  const quizAvg = overview?.averageQuiz || 82;
-  const teachAvg = overview?.teachingAverage || 75;
-  const bossMastery = overview?.bossMastery || 80;
+  const readiness = overview?.readiness || 0;
+  const quizAvg = overview?.averageQuiz || 0;
+  const teachAvg = overview?.teachingAverage || 0;
+  const bossMastery = overview?.bossMastery || 0;
   const profile = overview?.profile;
 
   const daysUntilExam = profile?.examDate
     ? Math.max(0, Math.ceil((new Date(profile.examDate) - new Date()) / 86400000))
-    : 30;
+    : null;
 
   return (
     <AppShell>
@@ -44,12 +44,12 @@ export default function ExamReadiness() {
         <Card hoverEffect={false} className="p-6 sm:p-8 bg-gradient-to-br from-[#0F172A] via-[#165F76] to-[#218DAE] text-white">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center sm:text-left">
-              <Badge variant="cyan">Exam Countdown: {daysUntilExam} Days Left</Badge>
+              {daysUntilExam !== null && <Badge variant="cyan">Exam Countdown: {daysUntilExam} Days Left</Badge>}
               <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-white">
                 Overall Readiness: {readiness}%
               </h2>
               <p className="text-sm text-slate-200 max-w-lg">
-                You are on track for your target goal: <strong className="text-[#FFD758]">{profile?.studyGoal || 'Pass with Distinction'}</strong>.
+                {profile?.studyGoal ? <>Your target goal: <strong className="text-[#FFD758]">{profile.studyGoal}</strong>.</> : 'Add your profile and complete learning activities to calculate readiness.'}
               </p>
             </div>
 
@@ -81,7 +81,7 @@ export default function ExamReadiness() {
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
               <span className="font-bold text-emerald-600 block">20% Revision Consistency</span>
               <p className="text-slate-500 mt-1">Daily streak & rescue sessions.</p>
-              <span className="font-bold text-slate-900 block mt-2">100% Active</span>
+              <span className="font-bold text-slate-900 block mt-2">{overview?.records?.length || 0} Activities</span>
             </div>
           </div>
         </Card>
@@ -92,28 +92,14 @@ export default function ExamReadiness() {
             <h3 className="font-display font-bold text-sm text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <CheckCircle2 size={16} /> Strong Topics (Mastered)
             </h3>
-            <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200">
-                TCP 3-Way Handshake (95% Mastery)
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200">
-                B+ Tree Indexing (90% Mastery)
-              </div>
-            </div>
+            <p className="text-xs text-slate-500">Strong topics will appear after you complete learning activities.</p>
           </Card>
 
           <Card hoverEffect={false}>
             <h3 className="font-display font-bold text-sm text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <AlertTriangle size={16} /> Weak Topics (Needs Pass)
             </h3>
-            <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-xl bg-amber-50 text-amber-950 font-semibold border border-amber-200">
-                Subnetting & Masking (65% Mastery)
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50 text-amber-950 font-semibold border border-amber-200">
-                Process Synchronization (60% Mastery)
-              </div>
-            </div>
+            <p className="text-xs text-slate-500">Weak topics will appear after your answers reveal them.</p>
           </Card>
 
           <Card hoverEffect={false}>
@@ -121,12 +107,7 @@ export default function ExamReadiness() {
               <Zap size={16} /> Critical Priority Topics
             </h3>
             <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-xl bg-rose-50 text-rose-950 font-semibold border border-rose-200">
-                Deadlock Avoidance & Banker's Algorithm (3 Mistakes Logged)
-              </div>
-              <Button onClick={() => navigate('/boss-battle')} variant="danger" size="sm" className="w-full mt-2">
-                Fix Critical Topic Now <ArrowRight size={14} />
-              </Button>
+              <p className="text-xs text-slate-500">Critical priorities will appear after mistakes are recorded.</p>
             </div>
           </Card>
         </div>

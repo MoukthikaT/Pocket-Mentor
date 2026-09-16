@@ -43,7 +43,7 @@ export default function Dashboard() {
   }, []);
 
   const profile = overview?.profile || user?.profile;
-  const readiness = overview?.readiness || 65;
+  const readiness = overview?.readiness || 0;
   const daysUntilExam = profile?.examDate
     ? Math.max(0, Math.ceil((new Date(profile.examDate) - new Date()) / 86400000))
     : null;
@@ -57,8 +57,8 @@ export default function Dashboard() {
 
   const achievements = useMemo(
     () => [
-      { id: 1, label: 'First Topic Mastered', unlocked: packs.length > 0, icon: BookOpen, color: 'cyan' },
-      { id: 2, label: '7-Day Streak', unlocked: true, icon: Flame, color: 'yellow' },
+      { id: 1, label: 'First Topic Mastered', unlocked: attempts.some((attempt) => Number(attempt.percentage) >= 80), icon: BookOpen, color: 'cyan' },
+      { id: 2, label: 'Consistent learner', unlocked: records.length > 1, icon: Flame, color: 'yellow' },
       { id: 3, label: 'Teach Like A Pro', unlocked: records.some((item) => item.kind === 'teaching'), icon: Users, color: 'teal' },
       { id: 4, label: 'Boss Crusher', unlocked: records.some((item) => item.kind === 'boss'), icon: Swords, color: 'yellow' },
     ],
@@ -165,13 +165,13 @@ export default function Dashboard() {
                 <Badge variant="cyan">Top Caliber</Badge>
               </div>
               <p className="font-display text-xl font-bold text-slate-900 truncate">
-                {strongest?.name || 'Computer Networks'}
+                {strongest?.name || 'No subject data yet'}
               </p>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
                 <span>Confidence Rating</span>
-                <span className="font-bold text-[#218DAE]">{strongest ? `${strongest.confidence}/5` : '4/5 High'}</span>
+                <span className="font-bold text-[#218DAE]">{strongest ? `${strongest.confidence}/5` : '—'}</span>
               </div>
-              <Progress value={strongest ? strongest.confidence * 20 : 80} variant="teal" size="sm" className="mt-2" />
+              <Progress value={strongest ? strongest.confidence * 20 : 0} variant="teal" size="sm" className="mt-2" />
             </Card>
 
             <Card hoverEffect={false} className="p-5">
@@ -180,13 +180,13 @@ export default function Dashboard() {
                 <Badge variant="rose">Action Needed</Badge>
               </div>
               <p className="font-display text-xl font-bold text-slate-900 truncate">
-                {weakest?.topic || 'Operating Systems'}
+                {weakest?.topic || 'No mistakes recorded'}
               </p>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
                 <span>Mistake Signals</span>
-                <span className="font-bold text-rose-600">{weakest?.count || 3} Repeated</span>
+                <span className="font-bold text-rose-600">{weakest?.count || weakest?.missed || 0} Recorded</span>
               </div>
-              <Progress value={35} variant="yellow" size="sm" className="mt-2" />
+              <Progress value={weakest ? Math.min(100, (weakest.count || weakest.missed || 0) * 20) : 0} variant="yellow" size="sm" className="mt-2" />
             </Card>
           </div>
         </div>
@@ -257,11 +257,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-4">
-                {(profile?.subjects?.length ? profile.subjects : [
-                  { name: 'Operating Systems', confidence: 2 },
-                  { name: 'Computer Networks', confidence: 4 },
-                  { name: 'Database Systems', confidence: 3 },
-                ]).map((subject) => (
+                {profile?.subjects?.length ? profile.subjects.map((subject) => (
                   <div key={subject.name} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-slate-800">{subject.name}</span>
@@ -271,7 +267,7 @@ export default function Dashboard() {
                     </div>
                     <Progress value={subject.confidence * 20} variant={subject.confidence <= 2 ? 'yellow' : 'cyan'} size="sm" />
                   </div>
-                ))}
+                )) : <p className="text-sm text-slate-500">Add your first subject and notes to see mastery here.</p>}
               </div>
             </Card>
           </div>
@@ -282,27 +278,29 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
                   <CardTitle subtitle="Revision frequency across days">Weekly Activity</CardTitle>
-                  <Badge variant="cyan">7 Active Days</Badge>
+                  <Badge variant="cyan">{records.length ? 'Activity recorded' : 'No activity yet'}</Badge>
                 </div>
 
-                <div className="flex items-end justify-between gap-2 h-36 pt-4">
+                {records.length === 0 ? <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 text-center text-sm text-slate-500">Complete your first learning activity to start your weekly chart.</div> : <div className="flex items-end justify-between gap-2 h-36 pt-4">
                   {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
-                    const heights = [45, 65, 30, 80, 100, 50, 40];
+                    const date = new Date();
+                    date.setDate(date.getDate() - (6 - idx));
+                    const heights = records.filter((item) => new Date(item.createdAt).toDateString() === date.toDateString()).length;
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                         <div
                           className={`w-full max-w-[24px] rounded-t-lg transition-all ${idx === 4 ? 'bg-gradient-to-t from-[#218DAE] to-[#2BBBD7]' : 'bg-slate-200'}`}
-                          style={{ height: `${heights[idx]}%` }}
+                          style={{ height: `${Math.min(100, heights * 30)}%` }}
                         />
                         <span className="text-[10px] font-bold text-slate-500">{day}</span>
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </div>
 
               <div className="mt-4 p-3 rounded-xl bg-[#F0F9FC] border border-[#2BBBD7]/20 text-xs font-semibold text-[#14819A]">
-                🔥 You've completed 14 revision cycles this week. Keep compounding!
+                {records.length ? `${records.length} learning activities recorded.` : 'Complete a learning activity to start your history.'}
               </div>
             </Card>
           </div>

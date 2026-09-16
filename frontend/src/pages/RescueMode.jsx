@@ -43,8 +43,8 @@ export default function RescueMode() {
   };
 
   const answeredCount = Object.keys(answers).length;
-  const totalQuestions = session?.questions?.length || 3;
-  const readinessResult = Math.round((answeredCount / totalQuestions) * 100);
+  const totalQuestions = session?.questions?.length || 0;
+  const readinessResult = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
   const formatTimer = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -75,7 +75,7 @@ export default function RescueMode() {
                 <label className="label">Topic Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Subnetting & IP Addressing, Deadlocks, Organic Reactions"
+                  placeholder="Enter the topic label for your notes"
                   className="input-field"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -125,11 +125,7 @@ export default function RescueMode() {
                   <Sparkles size={16} /> 1. MUST KNOW CONCEPTS
                 </h4>
                 <ul className="space-y-2 text-xs text-slate-700">
-                  {(session.priorityConcepts || [
-                    'Mutual Exclusion: Only one process can use resource at a time.',
-                    'Hold and Wait: Process holds resource while requesting another.',
-                    'Banker\'s Algorithm: Avoids deadlocks by checking safe state.',
-                  ]).map((item, idx) => (
+                  {(session.priorityConcepts || []).map((item, idx) => (
                     <li key={idx} className="p-3 rounded-xl bg-[#F0F9FC] border border-[#2BBBD7]/20 font-semibold">
                       ✓ {item}
                     </li>
@@ -143,10 +139,7 @@ export default function RescueMode() {
                   <AlertTriangle size={16} /> 2. COMMON TRAPS & MISTAKES
                 </h4>
                 <ul className="space-y-2 text-xs text-slate-700">
-                  {(session.weakAreas || [
-                    'Confusing Deadlock with Starvation (Starvation is indefinite delay).',
-                    'Ignoring Preemption allowed condition.',
-                  ]).map((item, idx) => (
+                  {(session.weakAreas || []).map((item, idx) => (
                     <li key={idx} className="p-3 rounded-xl bg-rose-50 border border-rose-200 font-semibold text-rose-950">
                       ⚠️ {item}
                     </li>
@@ -162,9 +155,7 @@ export default function RescueMode() {
               </h4>
 
               <div className="space-y-3">
-                {(session.questions || [
-                  { question: 'What is the main difference between deadlock prevention and avoidance?', answer: 'Prevention negates one of 4 conditions; Avoidance uses safety algorithms dynamically.' },
-                ]).map((q, idx) => (
+                {(session.questions || []).map((q, idx) => (
                   <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                     <p className="font-bold text-xs text-slate-800">{idx + 1}. {q.question}</p>
                     <button

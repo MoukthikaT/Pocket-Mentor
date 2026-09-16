@@ -36,17 +36,17 @@ export default function ProfileSetup() {
   const [formData, setFormData] = useState({
     name: user?.name || 'Alex Johnson',
     email: user?.email || 'student@university.edu',
-    username: 'alex_johnson99',
-    college: 'State Technological University',
-    year: '3rd Year',
-    course: 'B.Tech Computer Science',
-    examType: user?.profile?.examType || 'University Semester Exams',
+    username: '',
+    college: '',
+    year: '',
+    course: '',
+    examType: user?.profile?.examType || '',
     examDate: user?.profile?.examDate ? new Date(user?.profile?.examDate).toISOString().split('T')[0] : '2026-10-15',
-    targetScore: 'Top 5%',
-    studyGoal: user?.profile?.studyGoal || 'Pass with Distinction (Top 10%)',
-    preferredStyle: 'Feynman Method & Practice Problems',
-    difficulty: 'Medium Challenge',
-    dailyGoalMinutes: 45,
+    targetScore: '',
+    studyGoal: user?.profile?.studyGoal || '',
+    preferredStyle: '',
+    difficulty: '',
+    dailyGoalMinutes: '',
   });
 
   const handleSave = async (e) => {
@@ -54,7 +54,7 @@ export default function ProfileSetup() {
     setSaving(true);
     try {
       await saveProfile({
-        subjects: user?.profile?.subjects || [{ name: 'Computer Networks', confidence: 4 }],
+        subjects: user?.profile?.subjects || [],
         examType: formData.examType,
         examDate: formData.examDate,
         studyGoal: formData.studyGoal,

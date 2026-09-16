@@ -31,7 +31,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/80 shadow-card">
         <div className="flex items-center gap-3 mb-6">
           <div className="brand-mark">P</div>
-          <span className="font-display font-extrabold text-slate-900 text-lg">POCKET MENTOR</span>
+          <span className="font-logo text-slate-900 text-lg">POCKET MENTOR</span>
         </div>
 
         {!submitted ? (

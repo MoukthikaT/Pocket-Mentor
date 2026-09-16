@@ -8,95 +8,222 @@ const generateRevisionPack = asyncHandler(async (req, res) => {
   // VALIDATION
   // --------------------------------------------------
 
-  if (!topic || !topic.trim()) {
+  const cleanTopic = topic?.trim();
+  const cleanNotes = notes?.trim();
+
+  if (!cleanTopic) {
     res.status(400);
-    throw new Error('Please enter the subject name.');
+    throw new Error(
+      'Please enter the subject or topic name.'
+    );
   }
 
-  if (!notes || !notes.trim()) {
+  /*
+   * IMPORTANT:
+   *
+   * Subject/topic alone is NOT enough.
+   *
+   * Pocket Mentor must generate flashcards, quizzes,
+   * summaries and revision material ONLY from the
+   * student's supplied study material.
+   */
+
+  if (!cleanNotes) {
     res.status(400);
     throw new Error(
       'Please provide your own study notes before generating AI content.'
     );
   }
 
-  if (notes.trim().length < 30) {
+  if (cleanNotes.length < 30) {
     res.status(400);
     throw new Error(
-      'Please provide at least 30 characters of your own study material for better AI results.'
+      'Please provide at least 30 characters of your own study material.'
     );
   }
 
   // --------------------------------------------------
-  // REAL AI GENERATION
+  // GENERATE FROM USER MATERIAL ONLY
   // --------------------------------------------------
 
   try {
+    console.log('');
     console.log('====================================');
-    console.log('AI REVISION PACK REQUEST');
-    console.log('Topic:', topic);
-    console.log('Notes length:', notes.trim().length);
+    console.log('POCKET MENTOR - REVISION PACK');
+    console.log('====================================');
+    console.log('Topic:', cleanTopic);
+    console.log('Notes length:', cleanNotes.length);
+    console.log('Source: USER SUPPLIED NOTES ONLY');
     console.log('====================================');
 
-    const revisionPack = await aiService.generateRevisionPack(
-      topic.trim(),
-      notes.trim()
+    /*
+     * The topic is only used as a label/context.
+     *
+     * The actual academic source is cleanNotes.
+     */
+    const revisionPack =
+      await aiService.generateRevisionPack(
+        cleanTopic,
+        cleanNotes
+      );
+
+    // ------------------------------------------------
+    // SAFETY CHECK
+    // ------------------------------------------------
+
+    if (!revisionPack) {
+      res.status(500);
+
+      throw new Error(
+        'No revision material was generated.'
+      );
+    }
+
+    /*
+     * Make the source explicit in the response.
+     *
+     * This can also be used by the frontend to show
+     * "Generated from your notes".
+     */
+
+    const responseData = {
+      ...revisionPack,
+
+      generatedFrom: 'provided-study-material',
+
+      noteBased: true,
+
+      source: {
+        type: 'user-notes',
+        topic: cleanTopic,
+        noteLength: cleanNotes.length,
+      },
+    };
+
+    console.log(
+      'Revision pack generated successfully.'
     );
 
-    console.log('AI REVISION PACK GENERATED SUCCESSFULLY');
+    console.log(
+      'Flashcards:',
+      responseData.flashcards?.length || 0
+    );
+
+    console.log(
+      'Quiz questions:',
+      responseData.quiz?.length || 0
+    );
+
+    console.log(
+      'Generated from user notes: YES'
+    );
+
+    console.log('====================================');
+    console.log('');
 
     return res.status(200).json({
       success: true,
-      data: revisionPack,
+      data: responseData,
     });
+
   } catch (error) {
     // ------------------------------------------------
-    // PRINT THE REAL ERROR IN BACKEND TERMINAL
+    // BACKEND ERROR LOGGING
     // ------------------------------------------------
 
     console.error('');
-    console.error('==========================================');
-    console.error('        REAL AI GENERATION ERROR');
-    console.error('==========================================');
+    console.error(
+      '=========================================='
+    );
+    console.error(
+      'POCKET MENTOR AI GENERATION ERROR'
+    );
+    console.error(
+      '=========================================='
+    );
 
-    console.error('Message:', error?.message);
+    console.error(
+      'Message:',
+      error?.message
+    );
 
     if (error?.status) {
-      console.error('Status:', error.status);
+      console.error(
+        'Status:',
+        error.status
+      );
     }
 
     if (error?.statusCode) {
-      console.error('Status Code:', error.statusCode);
+      console.error(
+        'Status Code:',
+        error.statusCode
+      );
     }
 
     if (error?.code) {
-      console.error('Code:', error.code);
+      console.error(
+        'Code:',
+        error.code
+      );
     }
 
     if (error?.type) {
-      console.error('Type:', error.type);
+      console.error(
+        'Type:',
+        error.type
+      );
     }
 
     if (error?.response?.data) {
-      console.error('Response Data:', error.response.data);
+      console.error(
+        'Response Data:',
+        error.response.data
+      );
     }
 
-    console.error('Full Error:', error);
+    console.error(
+      'Full Error:',
+      error
+    );
 
-    console.error('==========================================');
+    console.error(
+      '=========================================='
+    );
     console.error('');
 
     // ------------------------------------------------
-    // SEND USEFUL ERROR TO FRONTEND
+    // FRONTEND ERROR
     // ------------------------------------------------
 
-    res.status(error?.statusCode || error?.status || 500);
+    res.status(
+      error?.statusCode ||
+      error?.status ||
+      500
+    );
 
     throw new Error(
       error?.message ||
-        'We could not generate your revision pack right now. Please try again.'
+      'We could not generate your revision pack right now. Please try again.'
     );
   }
 });
 
-export { generateRevisionPack };
+const explainConcept = asyncHandler(async (req, res) => {
+  const { topic, concept, level, notes } = req.body;
+  if (!topic?.trim() || !concept?.trim()) {
+    res.status(400);
+    throw new Error('A topic and concept are required.');
+  }
+  if (!notes?.trim() || notes.trim().length < 30) {
+    res.status(400);
+    throw new Error('Please provide the study material used to explain this concept.');
+  }
+  const result = await aiService.explainConcept({ topic: topic.trim(), concept: concept.trim(), level, notes: notes.trim() });
+  res.json({ ...result, noteBased: true });
+});
+
+export {
+  generateRevisionPack,
+  explainConcept,
+};

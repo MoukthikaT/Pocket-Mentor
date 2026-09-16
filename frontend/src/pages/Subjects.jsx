@@ -23,14 +23,7 @@ export default function Subjects() {
       .finally(() => setLoading(false));
   }, []);
 
-  const subjects = overview?.profile?.subjects?.length
-    ? overview.profile.subjects
-    : [
-        { name: 'Computer Networks', confidence: 4, topics: ['TCP/IP Model', 'Subnetting', 'Routing Algorithms', 'DNS Protocol'], weak: ['Subnetting'] },
-        { name: 'Operating Systems', confidence: 2, topics: ['Process Sync', 'Deadlock Avoidance', 'Paging & Segmentation', 'Virtual Memory'], weak: ['Deadlock Avoidance', 'Process Sync'] },
-        { name: 'Database Systems', confidence: 3, topics: ['B+ Trees', 'Relational Algebra', 'Normalization', 'ACID Properties'], weak: ['Normalization'] },
-        { name: 'Algorithm Analysis', confidence: 4, topics: ['Dynamic Programming', 'Graph Traversal', 'NP-Completeness'], weak: [] },
-      ];
+  const subjects = overview?.profile?.subjects || [];
 
   return (
     <AppShell>
@@ -47,59 +40,41 @@ export default function Subjects() {
         />
 
         {/* Subject Cards Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subj) => {
-            const mastery = Math.round((subj.confidence / 5) * 100);
-            return (
-              <Card key={subj.name} className="flex flex-col justify-between h-full">
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <h3 className="font-display font-bold text-xl text-slate-900">{subj.name}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Last revised 2 days ago</p>
+        {subjects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+            <BookOpen className="mx-auto text-slate-400" size={32} />
+            <h2 className="mt-3 font-display text-xl font-bold text-slate-900">No subjects yet</h2>
+            <p className="mt-1 text-sm text-slate-500">Add your own topic and notes to begin tracking learning.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {subjects.map((subj) => {
+              const mastery = Math.round((Number(subj.confidence) / 5) * 100);
+              return (
+                <Card key={subj.name} className="flex h-full flex-col justify-between">
+                  <div>
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-display text-xl font-bold text-slate-900">{subj.name}</h3>
+                        <p className="mt-0.5 text-xs text-slate-500">No revision recorded yet</p>
+                      </div>
+                      <ProgressRing value={mastery} size={54} strokeWidth={5} variant={mastery < 60 ? 'yellow' : 'cyan'} />
                     </div>
-                    <ProgressRing value={mastery} size={54} strokeWidth={5} variant={mastery < 60 ? 'yellow' : 'cyan'} />
+                    <div className="my-4 space-y-3 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-500">Topics completed</span><span className="font-bold text-slate-800">{subj.topics?.length || 0}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">Weak topics</span><span className="font-bold text-rose-600">{subj.weak?.length || 0}</span></div>
+                      <Progress value={mastery} variant={mastery < 60 ? 'yellow' : 'cyan'} size="sm" />
+                    </div>
                   </div>
-
-                  <div className="space-y-3 my-4">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Topics Completed</span>
-                      <span className="font-bold text-slate-800">{subj.topics ? subj.topics.length : 4} Topics</span>
-                    </div>
-
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Weak Topics Detected</span>
-                      <span className="font-bold text-rose-600">
-                        {subj.weak?.length ? subj.weak.join(', ') : 'None'}
-                      </span>
-                    </div>
-
-                    <Progress value={mastery} variant={mastery < 60 ? 'yellow' : 'cyan'} size="sm" />
+                  <div className="flex gap-2 border-t border-slate-100 pt-4">
+                    <Button onClick={() => setSelectedSubject(subj)} variant="secondary" size="sm" className="flex-1">View Overview</Button>
+                    <Button onClick={() => navigate('/create-study')} variant="primary" size="sm" className="flex-1">Continue <ArrowRight size={14} /></Button>
                   </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex gap-2">
-                  <Button
-                    onClick={() => setSelectedSubject(subj)}
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    View Overview
-                  </Button>
-                  <Button
-                    onClick={() => navigate('/create-study')}
-                    variant="primary"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Continue <ArrowRight size={14} />
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* Detailed Subject Overview Modal */}
         <Modal
@@ -127,7 +102,7 @@ export default function Subjects() {
                   <BookOpen size={16} className="text-[#218DAE]" /> Syllabus Topics
                 </h4>
                 <div className="grid sm:grid-cols-2 gap-2">
-                  {(selectedSubject.topics || ['Topic 1', 'Topic 2']).map((topic) => {
+                  {(selectedSubject.topics || []).map((topic) => {
                     const isWeak = selectedSubject.weak?.includes(topic);
                     return (
                       <div
@@ -154,11 +129,11 @@ export default function Subjects() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-600">
                   <span className="flex items-center gap-1.5"><History size={14} /> Total Quizzes Taken:</span>
-                  <span className="font-bold text-slate-900">4 Attempts</span>
+                  <span className="font-bold text-slate-900">0 Attempts</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-600">
                   <span className="flex items-center gap-1.5"><Target size={14} /> Average Score:</span>
-                  <span className="font-bold text-[#218DAE]">82%</span>
+                  <span className="font-bold text-[#218DAE]">0%</span>
                 </div>
               </div>
 

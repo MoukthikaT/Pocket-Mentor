@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { saveQuizAttempt } from '../services/studyStore';
 import { saveQuizRecord } from '../services/learningApi';
+import { useAuth } from '../hooks/useAuth';
 
 export default function QuizResult() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   if (!state?.quiz) {
     return (
@@ -38,7 +40,7 @@ export default function QuizResult() {
   const incorrectQuestions = results.filter((result) => !result.isCorrect).map((result) => ({ ...result, packId: state.pack?.id }));
 
   useEffect(() => {
-    if (state.pack?.id) saveQuizAttempt(state.pack.id, { id: state.attemptId, percentage, correct, total, incorrectQuestions });
+    if (state.pack?.id) saveQuizAttempt(state.pack.id, { id: state.attemptId, percentage, correct, total, incorrectQuestions }, user?._id);
     saveQuizRecord({ topic: state.pack?.title || state.material?.topic || 'General revision', percentage, correct, total, incorrectQuestions }).catch(() => {});
   // Persist this completed attempt only once when the result screen opens.
   // eslint-disable-next-line react-hooks/exhaustive-deps

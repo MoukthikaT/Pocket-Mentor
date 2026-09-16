@@ -54,6 +54,7 @@ export default function TeachFriend() {
     e.preventDefault();
     setError('');
     if (!form.topic.trim()) return setError('Please choose or enter a topic before starting.');
+    if (form.notes.trim().length < 30) return setError('Add at least 30 characters of your own study material before starting.');
     setPhase('active');
     setMessages([
       {
@@ -125,7 +126,7 @@ export default function TeachFriend() {
                 <label className="label">What topic will you teach Anu today?</label>
                 <input
                   type="text"
-                  placeholder="e.g. Process Synchronization & Deadlocks, TCP 3-Way Handshake, Normalization"
+                  placeholder="Enter the topic label for your notes"
                   className="input-field"
                   value={form.topic}
                   onChange={(e) => setForm({ ...form, topic: e.target.value })}

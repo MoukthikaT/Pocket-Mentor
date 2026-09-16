@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { findUserById } from '../utils/demoStore.js';
+import { useMongo } from '../utils/storageMode.js';
 
 const protect = async (req, res, next) => {
   let token;
@@ -10,7 +11,7 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pocketmentor-secret');
 
-      req.user = process.env.MONGODB_URI
+      req.user = useMongo()
         ? await User.findById(decoded.id).select('-password')
         : findUserById(decoded.id);
 

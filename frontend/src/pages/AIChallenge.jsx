@@ -8,13 +8,13 @@ import { buildChallenge, getChallengeStats, saveChallenge } from '../services/ch
 export default function AIChallenge() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const packs = getStudyPacks().filter((pack) => pack.ownerId === user?._id);
+  const packs = getStudyPacks(user?._id);
   const stats = getChallengeStats(user?._id);
-  const challenge = useMemo(() => buildChallenge(packs[0]?.title || 'your latest subject', stats.level), [packs, stats.level]);
+  const challenge = useMemo(() => buildChallenge(packs[0], stats.level), [packs, stats.level]);
   const [verdict, setVerdict] = useState('');
   const [reasoning, setReasoning] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const isCorrect = verdict === challenge.verdict;
+  const isCorrect = challenge?.verdict && verdict === challenge.verdict;
   const reasoningStrong = reasoning.trim().length >= 25;
   const score = (isCorrect ? 55 : 0) + (reasoningStrong ? 35 : 10);
 
@@ -23,6 +23,8 @@ export default function AIChallenge() {
     saveChallenge({ id: crypto.randomUUID?.() || Date.now(), userId: user?._id, topic: challenge.topic, claim: challenge.claim, correction: challenge.correction, correct: isCorrect, score, reasoning, createdAt: new Date().toISOString() });
     setSubmitted(true);
   };
+
+  if (!challenge?.claim) return <main className="min-h-screen px-4 py-8 sm:px-6"><div className="mx-auto max-w-5xl"><section className="card-surface p-8 text-center"><h1 className="text-2xl font-bold text-slate-900">No challenge material yet</h1><p className="mt-2 text-slate-600">Create a revision pack from your own notes before starting a challenge.</p><button className="btn-primary mt-5" onClick={() => navigate('/create-study')}>Create revision pack</button></section></div></main>;
 
   return <main className="min-h-screen px-4 py-8 sm:px-6"><div className="mx-auto max-w-5xl">
     <div className="mb-8 flex items-center justify-between gap-3"><button className="btn-secondary gap-2" onClick={() => navigate('/dashboard')}><ChevronLeft size={16} />Dashboard</button><Link className="text-sm font-semibold text-primary-700 hover:text-primary-800" to="/graveyard">Mistake Graveyard →</Link></div>

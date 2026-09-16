@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
 // IMPORTANT:
 // Load environment variables BEFORE importing routes/services
 // that use process.env.
-dotenv.config();
+dotenv.config({
+  path: fileURLToPath(new URL('./.env', import.meta.url)),
+});
 
 import express from 'express';
 import cors from 'cors';

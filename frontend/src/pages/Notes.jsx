@@ -24,7 +24,7 @@ export default function Notes() {
   const filteredPacks = packs.filter((pack) => {
     const matchesSearch = (pack.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (pack.topic || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSubject = filterSubject === 'ALL' || pack.subject === filterSubject;
+    const matchesSubject = filterSubject === 'ALL' || pack.topic === filterSubject;
     return matchesSearch && matchesSubject;
   }).sort((a, b) => {
     if (sortBy === 'date') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
@@ -68,9 +68,9 @@ export default function Notes() {
                 onChange={(e) => setFilterSubject(e.target.value)}
               >
                 <option value="ALL">All Subjects</option>
-                <option value="Computer Networks">Computer Networks</option>
-                <option value="Operating Systems">Operating Systems</option>
-                <option value="Database Systems">Database Systems</option>
+                {[...new Set(packs.map((pack) => pack.topic).filter(Boolean))].map((topic) => (
+                  <option key={topic} value={topic}>{topic}</option>
+                ))}
               </select>
             </div>
 
@@ -107,8 +107,8 @@ export default function Notes() {
                   </p>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                    <span>Questions: {pack.material?.quiz?.length || 5}</span>
-                    <span className="font-bold text-[#218DAE]">Mastery 85%</span>
+                    <span>Questions: {pack.material?.quiz?.length || 0}</span>
+                    <span className="font-bold text-[#218DAE]">Based on your attempts</span>
                   </div>
                 </div>
 

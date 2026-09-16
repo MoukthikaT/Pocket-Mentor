@@ -9,6 +9,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    localStorage.removeItem('pocketMentorStudyHistory');
+    localStorage.removeItem('pocketMentorChallenges');
+  }, []);
+
+  useEffect(() => {
     const loadUser = async () => {
       if (!token) {
         setUser(null);
@@ -22,6 +27,7 @@ export function AuthProvider({ children }) {
         setUser(response.data);
       } catch (error) {
         localStorage.removeItem('pocketMentorToken');
+        delete api.defaults.headers.common.Authorization;
         setToken(null);
         setUser(null);
       } finally {

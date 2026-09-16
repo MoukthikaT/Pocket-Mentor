@@ -9,11 +9,16 @@
   --color-yellow: #FFD758;
   --color-dark: #0F172A;
 
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   color: #0F172A;
   background-color: #F8FAFC;
   line-height: 1.5;
   font-weight: 400;
+  --surface-page: #f8fafc;
+  --surface-card: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --line: #e2e8f0;
 }
 
 html {
@@ -37,12 +42,93 @@ body {
 
 /* Heading Typography */
 h1, h2, h3, .font-display-heading {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Bricolage Grotesque', sans-serif;
   letter-spacing: -0.02em;
 }
 
 .font-game-accent {
   font-family: 'Sora', sans-serif;
+}
+
+.font-logo {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.theme-toggle {
+  border-color: #dbe5e8;
+  background: rgba(255, 255, 255, 0.82);
+  color: #475569;
+}
+
+.theme-toggle:hover {
+  border-color: #2bbbd7;
+  color: #14819a;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-page: #08151c;
+  --surface-card: #12232c;
+  --text-main: #f2f8f9;
+  --text-muted: #a8bdc4;
+  --line: #29414b;
+}
+
+html[data-theme='dark'] body {
+  background-color: #08151c;
+  background-image: radial-gradient(circle at 10% 10%, rgba(43, 187, 215, 0.1) 0, transparent 35%);
+  color: #e5eef1;
+}
+
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .bg-\[\#FDFEFE\],
+html[data-theme='dark'] .bg-\[\#FFFDF8\] {
+  background-color: #12232c !important;
+}
+
+html[data-theme='dark'] .bg-slate-50,
+html[data-theme='dark'] .bg-\[\#F7FAFB\],
+html[data-theme='dark'] .bg-\[\#F4FBFC\] {
+  background-color: #08151c !important;
+}
+
+html[data-theme='dark'] .text-slate-900,
+html[data-theme='dark'] .text-slate-800 {
+  color: #f2f8f9 !important;
+}
+
+html[data-theme='dark'] .text-slate-700,
+html[data-theme='dark'] .text-slate-600 {
+  color: #c4d4d9 !important;
+}
+
+html[data-theme='dark'] .text-slate-500,
+html[data-theme='dark'] .text-slate-400 {
+  color: #91a8b0 !important;
+}
+
+html[data-theme='dark'] .border-slate-200,
+html[data-theme='dark'] .border-slate-100,
+html[data-theme='dark'] .border-slate-200\/80 {
+  border-color: #29414b !important;
+}
+
+html[data-theme='dark'] .input-field,
+html[data-theme='dark'] .theme-toggle {
+  border-color: #35515d;
+  background: #12232c;
+  color: #f2f8f9;
+}
+
+html[data-theme='dark'] .input-field::placeholder {
+  color: #78909a;
+}
+
+html[data-theme='dark'] .theme-toggle:hover {
+  background: #1a3540;
+  color: #7ee5e0;
 }
 
 /* Custom Component Classes */
@@ -149,4 +235,110 @@ h1, h2, h3, .font-display-heading {
 
 .input-field.pr-10 {
   padding-right: 2.5rem !important;
+}
+
+
+
+/* =========================================================
+   POCKET MENTOR - FORM INPUT ICON FIX
+   ========================================================= */
+
+.input-field {
+  min-height: 46px;
+  box-sizing: border-box;
+}
+
+/* Inputs containing left-side icons */
+.input-field.pl-10,
+.input-field.pl-12 {
+  padding-left: 3rem !important;
+}
+
+/* Inputs containing password visibility button */
+.input-field.pr-10,
+.input-field.pr-12 {
+  padding-right: 3rem !important;
+}
+
+/* Keep icons visually above the input background
+   without interfering with typing/clicking */
+.relative > svg.absolute {
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Password visibility button must remain clickable */
+.relative > button.absolute {
+  z-index: 20;
+}
+
+/* Better modal scrollbar */
+.modal-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+/* Slightly more natural card interaction */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html[data-theme='dark'] .card-surface,
+html[data-theme='dark'] .glass-card {
+  border-color: #29414b;
+  background: #12232c;
+  color: #f2f8f9;
+}
+
+html[data-theme='dark'] .landing-page {
+  background: #08151c !important;
+  color: #f2f8f9;
+}
+
+html[data-theme='dark'] .landing-page section {
+  background: #10242d !important;
+  border-color: #29414b !important;
+  color: #f2f8f9;
+}
+
+html[data-theme='dark'] .landing-page header,
+html[data-theme='dark'] .landing-page section.bg-\[\#F7FCFC\],
+html[data-theme='dark'] .landing-page section.bg-\[\#FFF7DF\] {
+  background: #10242d !important;
+  border-color: #29414b !important;
+}
+
+html[data-theme='dark'] .landing-page section.bg-\[\#0F172A\] {
+  background: #061117 !important;
+}
+
+html[data-theme='dark'] .landing-page .bg-white,
+html[data-theme='dark'] .landing-page .bg-white\/95,
+html[data-theme='dark'] .landing-page .bg-white\/70 {
+  background-color: #16303a !important;
+  color: #f2f8f9;
+}
+
+html[data-theme='dark'] .landing-page .text-slate-900,
+html[data-theme='dark'] .landing-page .text-slate-800 {
+  color: #f2f8f9 !important;
+}
+
+html[data-theme='dark'] .landing-page .text-slate-600,
+html[data-theme='dark'] .landing-page .text-slate-500 {
+  color: #b5c8ce !important;
+}
+
+html[data-theme='dark'] .landing-page .border-slate-200,
+html[data-theme='dark'] .landing-page .border-slate-100 {
+  border-color: #31505b !important;
 }
